@@ -1,0 +1,19 @@
+version: '3'
+services:
+
+  backup-agent:
+    build: .
+    environment:
+      - NAS_IP=192.168.0.36
+      - NAS_SSH_PORT=22
+      - NAS_SSH_PASS=guest
+      - NAS_SSH_USER=guest
+      - NAS_SCRIPTS_POS=/home/guest/backup_scripts
+
+      - BACKUP_SOURCES=/mnt/tosave /root
+      - BACKUP_DESTINATION=/home/guest/backup
+
+        #          |days|weeks|months|years
+      - BACKUP_CONF=1110-00000-100000-00000
+    volumes:
+      - ./tosave:/mnt/tosave

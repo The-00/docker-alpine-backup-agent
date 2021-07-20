@@ -1,0 +1,53 @@
+#!/usr/bin/with-contenv ash
+
+# default value
+
+NAS_IP=${NAS_IP:-""}
+NAS_SSH_PORT=${NAS_SSH_PORT:-"22"}
+NAS_SSH_USER=${NAS_SSH_USER:-"root"}
+NAS_SSH_PASS=${NAS_SSH_PASS:-""}
+NAS_SCRIPTS_POS=${NAS_SCRIPTS_POS:-"/usr/local/bin"}
+
+BACKUP_SOURCES=${BACKUP_SOURCES:-""}
+BACKUP_DESTINATION=${BACKUP_DESTINATION:-""}
+
+# tools
+
+log="cd $BACKUP_DESTINATION; $NAS_SCRIPTS_POS/log"
+today=$(date +%Y%m%d)
+
+# conf did not change (normal reboor)
+
+[ $(cat /tmp/newconf) = "0" ] && exit 0
+
+# conf change :
+if [ $(cat /tmp/newbackup) = "0" ]
+then
+	pattern=$(cat /tmp/local_backup.conf | tr "\n" "|")
+	pattern=${pattern%?}
+	files=$(sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "ls $BACKUP_DESTINATION" | grep -E "$pattern" | tr '\n' ' ')
+	num=$RANDOM
+	sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "cd $BACKUP_DESTINATION; zip -uyrm $BACKUP_DESTINATION/$today.save-$num.zip $files" # random to prevent data loss if reboot in the same day
+	sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "$log 'configuration has change : save actual backup in $today.save-$num.zip'"
+fi
+
+# make first backup
+
+oldest=$(tail -n 1 "/tmp/backup.conf")
+
+for SOURCE in $BACKUP_SOURCES;
+do
+	sshpass -p "$NAS_SSH_PASS" rsync -e "ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT" -azP $SOURCE $NAS_SSH_USER@$NAS_IP:$BACKUP_DESTINATION/$today.$oldest
+	sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "$log '$SOURCE succesfuly rsync in $today.$oldest'"
+done
+
+# create other copy via hardlink
+for DEST in $(head -n -1 "/tmp/backup.conf");
+do
+	sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "cp -al $BACKUP_DESTINATION/$today.$oldest $BACKUP_DESTINATION/$today.$DEST"
+	sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "$log 'Data succesfuly cp in $today.$DEST'"
+done
+
+# prepare the current directory
+sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "cp -al $BACKUP_DESTINATION/$today.$oldest $BACKUP_DESTINATION/current"
+sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "$log 'Data succesfuly cp in current'"

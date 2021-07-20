@@ -1,0 +1,54 @@
+#!/bin/sh
+
+# tools
+log="/home/guest/backup_scripts/log"
+
+today=$(date +%Y%m%d)
+conf=".backup.conf"
+
+
+is_outdated() {
+# return 0 if not outdated else 1
+	type_file=$1
+	file=$(ls * -d | grep "$type_file")
+
+	d=$(echo "$file" | cut -d"." -f1)
+	t=$(echo "$file" | cut -d"." -f2)
+	n=$(echo "$file" | cut -d"." -f3)
+
+	date_outdated=$(date -d "$d + $n $t" +%Y%m%d)
+
+	[ $date_outdated -le $today ] && echo 1 || echo 0
+}
+
+files=$(cat $conf)
+newest=$(head -n1 $conf)
+
+# if newest backup is today : do nothing
+[ "$(is_outdated $newest)" = "0" ] && $log "backup is already done" && exit 1
+
+tomove=""
+
+for file_type in $(tac $conf)
+do
+	file=$(ls * -d | grep "$file_type")
+	file_date=$(echo $file | cut -d"." -f1)
+
+	if [ "z$tomove" != "z" ]
+	then
+		cp -al $file $file_date.$tomove
+		$log "move $file to $file_date.$tomove"
+		tomove=""
+	fi
+
+	if [ "$(is_outdated $file_type)" = "1" ]
+	then
+		$log "$file is outdated : rm"
+		rm $file -r
+		tomove=$file_type
+	fi
+done
+
+cp -al current $today.$tomove
+$log "cp current to $today.$tomove"
+

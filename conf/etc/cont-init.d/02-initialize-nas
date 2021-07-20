@@ -1,0 +1,58 @@
+#!/usr/bin/with-contenv ash
+
+# default value
+
+NAS_IP=${NAS_IP:-""}
+NAS_SSH_PORT=${NAS_SSH_PORT:-"22"}
+NAS_SSH_USER=${NAS_SSH_USER:-"root"}
+NAS_SSH_PASS=${NAS_SSH_PASS:-""}
+NAS_SCRIPTS_POS=${NAS_SCRIPTS_POS:-"/usr/local/bin"}
+
+BACKUP_SOURCES=${BACKUP_SOURCES:-""}
+BACKUP_DESTINATION=${BACKUP_DESTINATION:-""}
+
+# generate conf file
+types="day week month year"
+types_conf=$BACKUP_CONF
+
+CONF=""
+
+for i in $(seq 4); do
+	type=$(echo "$types" | cut -d" " -f$i)
+	conf=$(echo "$types_conf" | cut -d"-" -f$i)
+
+	for k in $(seq ${#conf}); do
+		[ $(echo "$conf" | cut -c$k) = "1" ] && CONF="${CONF}$type.$k\n"
+	done
+done
+echo -e "$CONF" | head -n -1 > "/tmp/backup.conf"
+
+# tools
+sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "mkdir -p $NAS_SCRIPTS_POS"
+sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "mkdir -p $BACKUP_DESTINATION"
+sshpass -p "$NAS_SSH_PASS" rsync -e "ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT" -azP /usr/local/bin/* $NAS_SSH_USER@$NAS_IP:$NAS_SCRIPTS_POS
+log="$NAS_SCRIPTS_POS/log"
+
+# new conf ?
+if [ $(sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "[ -f $BACKUP_DESTINATION/.backup.conf ] && echo 1 || echo 0") = "1" ]
+then
+	sshpass -p "$NAS_SSH_PASS" rsync -e "ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT" -azP $NAS_SSH_USER@$NAS_IP:$BACKUP_DESTINATION/.backup.conf /tmp/local_backup.conf
+	diff -q /tmp/local_backup.conf /tmp/backup.conf && echo 0 > /tmp/newconf || echo 1 > /tmp/newconf
+	echo "0" > /tmp/newbackup
+else
+	echo "1" > /tmp/newconf
+	echo "1" > /tmp/newbackup
+fi
+sshpass -p "$NAS_SSH_PASS" rsync -e "ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT" -azP /tmp/backup.conf $NAS_SSH_USER@$NAS_IP:$BACKUP_DESTINATION/.backup.conf
+
+# create files in nas
+
+sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP <<ENDSSH
+	mkdir -p $BACKUP_DESTINATION;
+	cd $BACKUP_DESTINATION;
+
+	[ -f "backup.log" ] && $log "reboot backup agent" || $log "backup agent initialization"
+	$log "conf: $BACKUP_CONF"
+
+	exit
+ENDSSH

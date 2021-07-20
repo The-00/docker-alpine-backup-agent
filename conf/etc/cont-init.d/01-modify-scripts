@@ -1,0 +1,5 @@
+#!/usr/bin/with-contenv ash
+
+NAS_SCRIPTS_POS=${NAS_SCRIPTS_POS:-"/usr/local/bin"}
+
+sed -i "s;{NAS_SCRIPTS_POS};$NAS_SCRIPTS_POS;g" /usr/local/bin/mv_backups
