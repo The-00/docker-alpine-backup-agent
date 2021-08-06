@@ -18,7 +18,7 @@ today=$(date +%Y%m%d)
 
 for SOURCE in $BACKUP_SOURCES;
 do
-	sshpass -p "$NAS_SSH_PASS" rsync -e "ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT" -azP $SOURCE $NAS_SSH_USER@$NAS_IP:$BACKUP_DESTINATION/current
+	sshpass -p "$NAS_SSH_PASS" rsync -e "ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT" -azP --del $SOURCE $NAS_SSH_USER@$NAS_IP:$BACKUP_DESTINATION/current
 	sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "$log '$SOURCE succesfuly rsync in current'"
 done
 
