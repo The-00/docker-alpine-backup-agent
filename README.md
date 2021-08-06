@@ -9,7 +9,7 @@ conteneur de backup sur un nas distant. utilisation de rsync et de backups par l
  *  `NAS_SSH_PASS`
  *  `NAS_SSH_USER` (root by default)
  *  `NAS_SCRIPTS_POS` position des scipts du service sur le nas (by default /usr/local/bin)
- *  `BACKUP_SOURCES`  dossiers a backup
+ *  `BACKUP_SOURCES`  dossiers a backup (pas de / a la fin !)
  *  `BACKUP_DESTINATION` endroit où backup
  *  `BACKUP_CONF`
 
