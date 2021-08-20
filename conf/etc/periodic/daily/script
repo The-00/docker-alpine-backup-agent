@@ -16,11 +16,18 @@ BACKUP_DESTINATION=${BACKUP_DESTINATION:-""}
 log="cd $BACKUP_DESTINATION; $NAS_SCRIPTS_POS/log"
 today=$(date +%Y%m%d)
 
+echo "backup $today rsync log" > /tmp/rsync.log
+sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "$log 'Starting Backup'"
+
 for SOURCE in $BACKUP_SOURCES;
 do
-	sshpass -p "$NAS_SSH_PASS" rsync -e "ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT" -azP --del $SOURCE $NAS_SSH_USER@$NAS_IP:$BACKUP_DESTINATION/current
+	echo "--------------------------" >> /tmp/rsync.log
+	sshpass -p "$NAS_SSH_PASS" rsync -e "ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT" -azv --del $SOURCE $NAS_SSH_USER@$NAS_IP:$BACKUP_DESTINATION/current >> /tmp/rsync.log
 	sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "$log '$SOURCE succesfuly rsync in current'"
 done
 
 
+sshpass -p "$NAS_SSH_PASS" rsync -e "ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT" -zP /tmp/rsync.log $NAS_SSH_USER@$NAS_IP:$BACKUP_DESTINATION/current
+sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "$log 'rsync logs in current/rsync.log'"
 sshpass -p "$NAS_SSH_PASS" ssh -oStrictHostKeyChecking=no -p $NAS_SSH_PORT $NAS_SSH_USER@$NAS_IP "cd $BACKUP_DESTINATION; $NAS_SCRIPTS_POS/mv_backups"
+
