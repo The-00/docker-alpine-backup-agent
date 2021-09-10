@@ -12,6 +12,8 @@ conteneur de backup sur un nas distant. utilisation de rsync et de backups par l
  *  `BACKUP_SOURCES`  dossiers a backup (pas de / a la fin !)
  *  `BACKUP_DESTINATION` endroit où backup
  *  `BACKUP_CONF`
+ *  `BACKUP_MIN_DELAY` minimum time before start backup (in sec, default 0)
+ *  `BACKUP_MAX_DELAY` maximum time before start backup (in sec, default 3600)
 
 ### backup conf retention
 

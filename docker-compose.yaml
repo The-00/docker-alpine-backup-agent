@@ -12,6 +12,8 @@ services:
 
       - BACKUP_SOURCES=/mnt/tosave /root
       - BACKUP_DESTINATION=/home/guest/backup
+      - BACKUP_MIN_DELAY=0
+      - BACKUP_MAX_DELAY=3600
 
         #          |days|weeks|months|years
       - BACKUP_CONF=1110-00000-100000-00000
